@@ -53,7 +53,21 @@ src/
   App.css, index.css   # Design system & styles
 ```
 
+## Deploying to Vercel
+
+Chat requests go through `/api/chat` (a Vercel serverless function). The API key is read **at runtime on the server**, not baked into the frontend build.
+
+1. In Vercel → **Project Settings → Environment Variables**, add:
+   - `OPENROUTER_API_KEY` — your key from [openrouter.ai/keys](https://openrouter.ai/keys)
+   - `OPENROUTER_MODEL` — optional (defaults to `nex-agi/nex-n2-pro:free`)
+
+   Your existing `VITE_OPENROUTER_API_KEY` also works — the server accepts either name.
+
+2. **Redeploy** after adding or changing env vars (Deployments → ⋯ → Redeploy).
+
+3. Enable env vars for **Production** (and Preview if you use preview URLs).
+
 ## Security note
 
-Because this is a client-side app, any `VITE_*` value (including the API key) is bundled into the browser. For a hardened production deployment, proxy requests through a backend so the key never reaches the client. A starter Express proxy is included in `server.js` — run it with an `OPENROUTER_API_KEY` environment variable and point the frontend at it.
-"# ChatAI" 
+The OpenRouter key stays on the server via `/api/chat`. It is never sent to the browser in production.
+

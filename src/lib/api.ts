@@ -1,11 +1,5 @@
 import { records, type SupportRecord } from '../assets/records';
 
-const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY as string | undefined;
-const MODEL =
-  (import.meta.env.VITE_OPENROUTER_MODEL as string | undefined) ??
-  'nex-agi/nex-n2-pro:free';
-
 export interface KnowledgeMatch {
   match: SupportRecord | null;
   score: number;
@@ -66,16 +60,13 @@ export interface ChatTurn {
 }
 
 /**
- * Sends a question to OpenRouter, grounded with relevant knowledge-base context.
+ * Sends a question through the server API (Vercel function in production,
+ * Vite dev middleware locally). The OpenRouter key never ships to the browser.
  */
 export async function askAssistant(
   userInput: string,
   history: ChatTurn[] = [],
 ): Promise<string> {
-  if (!API_KEY) {
-    return 'The assistant is not configured yet. Add `VITE_OPENROUTER_API_KEY` to your `.env` file and restart the dev server.';
-  }
-
   const { match, score } = getBestMatch(userInput);
   const systemPrompt = buildSystemPrompt(match, score);
 
@@ -85,29 +76,28 @@ export async function askAssistant(
     { role: 'user', content: userInput },
   ];
 
-  const response = await fetch(OPENROUTER_URL, {
+  const response = await fetch('/api/chat', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${API_KEY}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': window.location.origin,
-      'X-Title': 'AI Support Desk',
-    },
-    body: JSON.stringify({ model: MODEL, messages }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
   });
 
-  if (!response.ok) {
-    let detail = '';
-    try {
-      const errorData = await response.json();
-      detail = errorData.error?.message ?? '';
-    } catch {
-      /* ignore parse errors */
-    }
-    throw new Error(detail || `Request failed with status ${response.status}`);
+  let data: { answer?: string; error?: string } = {};
+  try {
+    data = await response.json();
+  } catch {
+    /* ignore parse errors */
   }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  return content?.trim() || "I'm sorry, I received an empty response. Please try again.";
+  if (!response.ok) {
+    throw new Error(
+      data.error ||
+        `Request failed with status ${response.status}. If you just added env vars on Vercel, redeploy the project.`,
+    );
+  }
+
+  return (
+    data.answer?.trim() ||
+    "I'm sorry, I received an empty response. Please try again."
+  );
 }
