@@ -37,6 +37,16 @@ const SUGGESTIONS = [
   'Where is my order?',
 ];
 
+/** Keep typing dots visible at least this long so KB and LLM replies feel the same. */
+const MIN_TYPING_MS = 1000;
+
+async function waitForMinimumTyping(startedAt: number) {
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < MIN_TYPING_MS) {
+    await new Promise((resolve) => setTimeout(resolve, MIN_TYPING_MS - elapsed));
+  }
+}
+
 function createTicketInfo(): TicketInfo {
   const now = new Date();
   const dateStr = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(
@@ -327,7 +337,9 @@ function App() {
       }
 
       try {
-        const answer = await askAssistant(trimmed, history);
+        const typingStarted = Date.now();
+        const { answer } = await askAssistant(trimmed, history);
+        await waitForMinimumTyping(typingStarted);
         setMessages((prev) => [
           ...prev,
           {

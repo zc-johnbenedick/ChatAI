@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
 import { buildChatMessages } from './lib/knowledge.js';
+import { sanitizeAssistantResponse } from './lib/sanitize.js';
 
 /** Dev-only handler so `/api/chat` works locally without `vercel dev`. */
 function devChatApi(): Plugin {
@@ -52,6 +53,7 @@ function devChatApi(): Plugin {
             const { userInput, history, messages: rawMessages } = body ?? {};
 
             let messages = rawMessages;
+            let meta = null;
             if (!messages) {
               if (!userInput || typeof userInput !== 'string') {
                 res.statusCode = 400;
@@ -59,7 +61,22 @@ function devChatApi(): Plugin {
                 res.end(JSON.stringify({ error: 'userInput is required' }));
                 return;
               }
-              messages = buildChatMessages(userInput, history ?? []);
+              const built = await buildChatMessages(userInput, history ?? []);
+              meta = built.meta;
+
+              if (built.directAnswer) {
+                res.statusCode = 200;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(
+                  JSON.stringify({
+                    answer: sanitizeAssistantResponse(built.directAnswer),
+                    meta,
+                  }),
+                );
+                return;
+              }
+
+              messages = built.messages;
             }
 
             const response = await fetch(
@@ -94,10 +111,11 @@ function devChatApi(): Plugin {
               return;
             }
 
-            const answer = data.choices?.[0]?.message?.content?.trim();
+            const rawAnswer = data.choices?.[0]?.message?.content?.trim();
+            const answer = sanitizeAssistantResponse(rawAnswer);
             res.statusCode = 200;
             res.setHeader('Content-Type', 'application/json');
-            res.end(JSON.stringify({ answer: answer ?? '' }));
+            res.end(JSON.stringify({ answer: answer ?? '', meta }));
           } catch (err) {
             console.error('Dev chat API error:', err);
             res.statusCode = 500;

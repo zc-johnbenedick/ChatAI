@@ -9,6 +9,8 @@ A professional, production-ready AI chat assistant built with **React 19**, **Ty
 - **Markdown answers** — assistant responses render lists, code, tables, and links (GitHub-flavored markdown).
 - **Conversation history** — every chat is saved locally and synced to Firestore; revisit or delete past tickets.
 - **Knowledge-base grounding** — relevant past tickets are matched locally and used to ground answers.
+- **Web search fallback** — when similarity is below 0.78 or the question needs fresh data, the server fetches up-to-date context (DuckDuckGo, Wikipedia, optional Brave Search).
+- **Dataset-accurate replies** — matched questions return steps directly from resolved tickets, with a brief friendly opener.
 - **Responsive** — works on desktop and mobile (sidebar collapses into a drawer).
 
 ## Getting Started
@@ -62,6 +64,7 @@ Chat requests go through `/api/chat` (a Vercel serverless function). The API key
 1. In Vercel → **Project Settings → Environment Variables**, add:
    - `OPENROUTER_API_KEY` — your key from [openrouter.ai/keys](https://openrouter.ai/keys)
    - `OPENROUTER_MODEL` — optional (defaults to `nex-agi/nex-n2-pro:free`)
+   - `BRAVE_SEARCH_API_KEY` — optional, improves web search when knowledge-base similarity is low
 
    Your existing `VITE_OPENROUTER_API_KEY` also works — the server accepts either name.
 

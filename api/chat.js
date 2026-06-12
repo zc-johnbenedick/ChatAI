@@ -2,6 +2,7 @@
  * Vercel serverless handler — keeps the OpenRouter key on the server.
  */
 import { buildChatMessages } from '../lib/knowledge.js';
+import { sanitizeAssistantResponse } from '../lib/sanitize.js';
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,12 +35,23 @@ export default async function handler(req, res) {
   const { userInput, history, messages: rawMessages } = req.body ?? {};
 
   let messages = rawMessages;
+  let meta = null;
 
   if (!messages) {
     if (!userInput || typeof userInput !== 'string') {
       return res.status(400).json({ error: 'userInput is required' });
     }
-    messages = buildChatMessages(userInput, history ?? []);
+    const built = await buildChatMessages(userInput, history ?? []);
+    meta = built.meta;
+
+    if (built.directAnswer) {
+      return res.status(200).json({
+        answer: sanitizeAssistantResponse(built.directAnswer),
+        meta,
+      });
+    }
+
+    messages = built.messages;
   }
 
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -81,13 +93,14 @@ export default async function handler(req, res) {
     }
 
     const data = await response.json();
-    const answer = data.choices?.[0]?.message?.content?.trim();
+    const rawAnswer = data.choices?.[0]?.message?.content?.trim();
+    const answer = sanitizeAssistantResponse(rawAnswer);
 
     if (!answer) {
       return res.status(502).json({ error: 'Empty response from OpenRouter' });
     }
 
-    return res.status(200).json({ answer });
+    return res.status(200).json({ answer, meta });
   } catch (err) {
     console.error('Chat API error:', err);
     return res.status(500).json({ error: 'Failed to reach the AI service' });
