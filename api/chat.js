@@ -1,7 +1,8 @@
 /**
  * Vercel serverless handler — keeps the OpenRouter key on the server.
- * Accepts OPENROUTER_API_KEY or VITE_OPENROUTER_API_KEY from Vercel env.
  */
+import { buildChatMessages } from '../lib/knowledge.js';
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -30,7 +31,16 @@ export default async function handler(req, res) {
     });
   }
 
-  const { messages } = req.body ?? {};
+  const { userInput, history, messages: rawMessages } = req.body ?? {};
+
+  let messages = rawMessages;
+
+  if (!messages) {
+    if (!userInput || typeof userInput !== 'string') {
+      return res.status(400).json({ error: 'userInput is required' });
+    }
+    messages = buildChatMessages(userInput, history ?? []);
+  }
 
   if (!Array.isArray(messages) || messages.length === 0) {
     return res.status(400).json({ error: 'messages array is required' });

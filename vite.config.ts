@@ -1,7 +1,8 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
+import { buildChatMessages } from './lib/knowledge.js';
 
-/** Dev-only proxy so `/api/chat` works locally without `vercel dev`. */
+/** Dev-only handler so `/api/chat` works locally without `vercel dev`. */
 function devChatApi(): Plugin {
   return {
     name: 'dev-chat-api',
@@ -48,13 +49,17 @@ function devChatApi(): Plugin {
         req.on('end', async () => {
           try {
             const body = JSON.parse(Buffer.concat(chunks).toString());
-            const { messages } = body ?? {};
+            const { userInput, history, messages: rawMessages } = body ?? {};
 
-            if (!Array.isArray(messages) || messages.length === 0) {
-              res.statusCode = 400;
-              res.setHeader('Content-Type', 'application/json');
-              res.end(JSON.stringify({ error: 'messages array is required' }));
-              return;
+            let messages = rawMessages;
+            if (!messages) {
+              if (!userInput || typeof userInput !== 'string') {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'userInput is required' }));
+                return;
+              }
+              messages = buildChatMessages(userInput, history ?? []);
             }
 
             const response = await fetch(

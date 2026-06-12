@@ -46,9 +46,11 @@ npm run preview
 ```
 src/
   App.tsx              # Main chat application
-  lib/api.ts           # OpenRouter request + knowledge-base matching
-  components/Markdown.tsx
-  assets/records.ts    # Local knowledge base
+  lib/knowledge.js           # Knowledge-base loader + matching (server-side)
+  api/chat.js                # Vercel serverless chat endpoint
+  src/
+    lib/api.ts               # Client chat API caller
+    assets/support_chat_resolved_records.json
   firebase.ts          # Firestore setup
   App.css, index.css   # Design system & styles
 ```

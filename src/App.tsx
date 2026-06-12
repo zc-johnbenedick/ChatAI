@@ -30,9 +30,11 @@ type Theme = 'light' | 'dark';
 
 const SUGGESTIONS = [
   'How do I add a new team member?',
-  'How do I reset my password?',
-  'How do I upgrade my plan?',
-  'How do I enable two-factor authentication?',
+  'I cannot log in even though my password is correct.',
+  'How do I export my data?',
+  'How do I cancel my subscription?',
+  'Can I get a copy of my invoice?',
+  'Where is my order?',
 ];
 
 function createTicketInfo(): TicketInfo {
